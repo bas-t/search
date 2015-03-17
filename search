@@ -1,5 +1,21 @@
 #!/bin/bash
 
+confirmyes(){
+    # call with a prompt string or use a default
+    read -r -p "${1:-Are you sure? [Y/n]} " response
+    case $response in
+        [yY][eE][sS]|[yY]) 
+            true
+            ;;
+        [nN][oO]|[nN])
+            false
+            ;;
+        *)
+            true
+            ;;
+    esac
+}
+
 if echo "$(whoami)" | grep "root" > /dev/null 2>&1; then
   echo -en "
 \E[1;33;44m
@@ -19,13 +35,13 @@ read -r -p "
 ${1:-Search recursive? [Y/n]} " recursive
 case $recursive in
     [yY][eE][sS]|[yY]) 
-        zoek=""
+        search=""
         ;;
     [nN][oO]|[nN])
-        zoek="-maxdepth 1"
+        search="-maxdepth 1"
         ;;
     *)
-        zoek=""
+        search=""
         ;;
 esac
 
@@ -41,11 +57,11 @@ read -r -p "
 ${1:-Enter text to search for:} " tekst
 
 if [ "$tekst" = "" ]; then
-  find $path $zoek -type f -iname "$file" > ~/searchstring.txt
+  find $path $search -type f -iname "$file" > ~/searchstring.txt
 else
-  #find $path $zoek -type f -iname "$file" -print0 | xargs -0 grep -l "$tekst" > ~/searchstring.txt
+  #find $path $search -type f -iname "$file" -print0 | xargs -0 grep -l "$tekst" > ~/searchstring.txt
 
-  find $path $zoek -type f -iname "$file" -exec grep -l "$tekst" {} \+ > ~/searchstring.txt
+  find $path $search -type f -iname "$file" -exec grep -l "$tekst" {} \+ > ~/searchstring.txt
 fi
 
 lines=$( wc -l ~/searchstring.txt  | awk '{print $1}' )
@@ -60,7 +76,6 @@ No match found
 elif [ "$lines" -eq "1" ]; then
   size=$( wc -c `cat ~/searchstring.txt` | awk '{print $1}' )
 else
-  exit 0
   size=$( wc -c `cat ~/searchstring.txt` | grep "totaal" | awk '{print $1}' )
 fi
 
@@ -90,6 +105,15 @@ Total size of the matching file(s) = $totalsize
 \E[0m
 
 "
+confirmyes "
+Do you want to review the matches found? [Y/n]"
 
-
-pluma ~/searchstring.txt
+if ! [ "$?" -eq 0 ]; then
+  exit 0
+elif dpkg-query -l pluma | grep "ii" > /dev/null 2>&1; then
+  pluma ~/searchstring.txt
+elif dpkg-query -l gedit | grep "ii" > /dev/null 2>&1; then
+  gedit ~/searchstring.txt
+else
+  cat ~/searchstring.txt | less
+fi
