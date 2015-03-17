@@ -1,0 +1,95 @@
+#!/bin/bash
+
+if echo "$(whoami)" | grep "root" > /dev/null 2>&1; then
+  echo -en "
+\E[1;33;44m
+You can not run as root.
+
+Aborting...
+\E[0m
+
+"
+  exit 0
+fi
+
+read -r -p "
+${1:-Enter search path:} " path
+
+read -r -p "
+${1:-Search recursive? [Y/n]} " recursive
+case $recursive in
+    [yY][eE][sS]|[yY]) 
+        zoek=""
+        ;;
+    [nN][oO]|[nN])
+        zoek="-maxdepth 1"
+        ;;
+    *)
+        zoek=""
+        ;;
+esac
+
+read -r -p "
+${1:-Enter filename or expression:} " bestand
+if [ "$bestand" = "" ]; then
+  file="*"
+else
+  file="$bestand"
+fi
+
+read -r -p "
+${1:-Enter text to search for:} " tekst
+
+if [ "$tekst" = "" ]; then
+  find $path $zoek -type f -iname "$file" > ~/searchstring.txt
+else
+  #find $path $zoek -type f -iname "$file" -print0 | xargs -0 grep -l "$tekst" > ~/searchstring.txt
+
+  find $path $zoek -type f -iname "$file" -exec grep -l "$tekst" {} \+ > ~/searchstring.txt
+fi
+
+lines=$( wc -l ~/searchstring.txt  | awk '{print $1}' )
+if [ "$lines" -eq "0" ]; then
+  echo -en "
+\E[1;33;44m
+No match found
+\E[0m
+
+"
+  exit 0
+elif [ "$lines" -eq "1" ]; then
+  size=$( wc -c `cat ~/searchstring.txt` | awk '{print $1}' )
+else
+  exit 0
+  size=$( wc -c `cat ~/searchstring.txt` | grep "totaal" | awk '{print $1}' )
+fi
+
+last="${size:(-3)}"
+second="$(($size / 1000))"
+third="$(($size / 1000000))"
+if [ "$size" -lt "1000" ]; then
+totalsize="$( echo "$size byte" )"
+elif [ "$size" -lt "1000000" ]; then
+last="$( expr substr $last 1 2 )"
+totalsize=$( echo "$second,$last Kb" )
+elif [ "$size" -gt "999999" ]; then
+second="${second:(-3)}"
+second="$( expr substr $second 1 2 )"
+totalsize="$( echo "$third,$second Mb" )"
+fi
+
+echo -en "
+\E[1;33;44m
+text or expression you searched for = $tekst
+
+path = $path/$file
+
+Total number of file(s) matching search criteria = `wc -l ~/searchstring.txt  | awk '{print $1}'`
+
+Total size of the matching file(s) = $totalsize
+\E[0m
+
+"
+
+
+pluma ~/searchstring.txt
