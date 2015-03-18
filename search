@@ -97,7 +97,7 @@ echo -en "
 \E[1;33;44m
 text or expression you searched for = $tekst
 
-path = $path/$file
+searched in = $path/$file
 
 Total number of file(s) matching search criteria = `wc -l ~/searchstring.txt  | awk '{print $1}'`
 
