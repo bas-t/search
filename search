@@ -48,20 +48,31 @@ esac
 read -r -p "
 ${1:-Enter filename or expression:} " bestand
 if [ "$bestand" = "" ]; then
-  file="*"
+  files="*"
 else
-  file="$bestand"
+  files="$bestand"
 fi
 
 read -r -p "
 ${1:-Enter text to search for:} " tekst
 
-if [ "$tekst" = "" ]; then
-  find $path $search -type f -iname "$file" > ~/searchstring.txt
-else
-  #find $path $search -type f -iname "$file" -print0 | xargs -0 grep -l "$tekst" > ~/searchstring.txt
+getlist0() {
+    for file in "$(find $path $search -type f -iname "$files")" ; do
+            printf "%s"'\n' "$file"
+    done
+}
 
-  find $path $search -type f -iname "$file" -exec grep -l "$tekst" {} \+ > ~/searchstring.txt
+getlist1() {
+    for file in "$(find $path $search -type f -iname "$files" -exec grep -l "$tekst" {} \+)" ; do
+            printf "%s"'\n' "$file"
+    done
+}
+
+
+if [ "$tekst" = "" ]; then
+  getlist0 > ~/searchstring.txt
+else
+  getlist1 > ~/searchstring.txt
 fi
 
 lines=$( wc -l ~/searchstring.txt  | awk '{print $1}' )
@@ -76,7 +87,23 @@ No match found
 elif [ "$lines" -eq "1" ]; then
   size=$( wc -c `cat ~/searchstring.txt` | awk '{print $1}' )
 else
-  size=$( wc -c `cat ~/searchstring.txt` | grep "totaal" | awk '{print $1}' )
+  size=$( while read filename ;  do stat -c '%s' $filename ; done < ~/searchstring.txt | awk '{total+=$1} END {print total}' )
+  if ! [ "$size" -eq "$size" ] 2>/dev/null; then
+    echo -en "
+\E[1;33;44m
+####################################
+
+Error(s) encountered while computing
+
+the total size of matching files.
+
+Aborting...
+
+####################################
+\E[0m
+"
+    exit 1
+  fi
 fi
 
 last="${size:(-3)}"
@@ -97,7 +124,7 @@ echo -en "
 \E[1;33;44m
 text or expression you searched for = $tekst
 
-searched in = $path/$file
+searched in = $path/$files
 
 Total number of file(s) matching search criteria = `wc -l ~/searchstring.txt  | awk '{print $1}'`
 
