@@ -16,16 +16,9 @@ confirmyes(){
     esac
 }
 
+ROOT="no"
 if echo "$(whoami)" | grep "root" > /dev/null 2>&1; then
-  echo -en "
-\E[1;33;44m
-You can not run as root.
-
-Aborting...
-\E[0m
-
-"
-  exit 0
+ROOT="yes"
 fi
 
 read -r -p "
@@ -137,6 +130,10 @@ Do you want to review the matches found? [Y/n]"
 
 if ! [ "$?" -eq 0 ]; then
   exit 0
+fi
+
+if [ "$ROOT" = "yes" ]; then
+  cat ~/searchstring.txt | less
 elif dpkg-query -l pluma | grep "ii" > /dev/null 2>&1; then
   pluma ~/searchstring.txt
 elif dpkg-query -l gedit | grep "ii" > /dev/null 2>&1; then
